@@ -76,14 +76,15 @@ class Inference:
 
         if num_samples >= window_size:
             waveform_batch = F.unfold(
-                waveform[None, ...],
-                kernel_size=(window_size, 1),
-                stride=(step_size, 1),
-                padding=(window_size, 0),
-            )
+            waveform[None, ...],
+            kernel_size=(window_size, 1),
+            stride=(step_size, 1),
+            padding=(window_size, 0),
+        )
             waveform_batch = waveform_batch.permute(2, 0, 1)
-
-        return waveform_batch
+        else:
+            waveform_batch = waveform.unsqueeze(0).permute(2, 0, 1)
+            return waveform_batch
 
     @staticmethod
     def aggreagate(
@@ -95,7 +96,6 @@ class Inference:
     ):
         """
         stitch batched waveform into single waveform. (Overlap-add)
-        inspired from https://github.com/asteroid-team/asteroid
         arguments:
             data: batched waveform
             window_size : window_size used to batch waveform
