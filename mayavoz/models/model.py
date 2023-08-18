@@ -372,41 +372,43 @@ class Mayamodel(pl.LightningModule):
         return torch.vstack(batch_predictions)
 
     def enhance(
-        self,
-        audio: Union[Path, np.ndarray, torch.Tensor],
-        sampling_rate: Optional[int] = None,
-        batch_size: int = 32,
-        save_output: bool = False,
-        duration: Optional[int] = None,
-        step_size: Optional[int] = None,
-    ):
-        """
-        Enhance audio using loaded pretained model.
+    self,
+    audio: Union[Path, np.ndarray, torch.Tensor],
+    sampling_rate: Optional[int] = None,
+    batch_size: int = 32,
+    save_output: bool = False,
+    duration: Optional[float] = None,
+    step_size: Optional[int] = None,
+):
+    """
+    Enhance audio using loaded pretrained model.
 
-        parameters:
-            audio: Path to audio file or numpy array or torch tensor
-                single input audio
-            sampling_rate: int, optional incase input is path
-                sampling rate of input
-            batch_size: int, default 32
-                input audio is split into multiple chunks. Inference is done on batches
-                of these chunks according to given batch size.
-            save_output : bool, default False
-                weather to save output to file
-            duration : float, optional
-                chunk duration in seconds, defaults to duration of loaded pretrained model.
-            step_size: int, optional
-                step size between consecutive durations, defaults to 50% of duration
-        """
+    parameters:
+        audio: Path to audio file or numpy array or torch tensor
+            single input audio
+        sampling_rate: int, optional incase input is path
+            sampling rate of input
+        batch_size: int, default 32
+            input audio is split into multiple chunks. Inference is done on batches
+            of these chunks according to given batch size.
+        save_output : bool, default False
+            weather to save output to file
+        duration : float, optional
+            chunk duration in seconds, defaults to duration of loaded pretrained model.
+        step_size: int, optional
+            step size between consecutive durations, defaults to 50% of duration
+    """
 
-        model_sampling_rate = self.hparams["sampling_rate"]
-        if duration is None:
-            duration = self.hparams["duration"]
-        waveform = Inference.read_input(
-            audio, sampling_rate, model_sampling_rate
-        )
-        waveform.to(self.device)
-        window_size = round(duration * model_sampling_rate)
+    model_sampling_rate = self.hparams["sampling_rate"]
+    if duration is None:
+        duration = self.hparams["duration"]
+    waveform = Inference.read_input(
+        audio, sampling_rate, model_sampling_rate
+    )
+    waveform.to(self.device)
+    window_size = round(duration * model_sampling_rate)
+    
+    if waveform.shape[-1] >= window_size:
         batched_waveform = Inference.batchify(
             waveform, window_size, step_size=step_size
         )
@@ -420,12 +422,14 @@ class Mayamodel(pl.LightningModule):
 
         if save_output and isinstance(audio, (str, Path)):
             Inference.write_output(waveform, audio, model_sampling_rate)
-
         else:
             waveform = Inference.prepare_output(
                 waveform, model_sampling_rate, audio, sampling_rate
             )
             return waveform
+    else:
+        # If the waveform is too short for the window size, directly return it
+        return waveform
 
     @property
     def valid_monitor(self):
